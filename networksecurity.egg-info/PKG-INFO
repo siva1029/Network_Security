@@ -1,0 +1,14 @@
+Metadata-Version: 2.2
+Name: networksecurity
+Version: 0.0.1
+Author: siva
+Author-email: test@gmail.com
+License-File: LICENCE
+Requires-Dist: python-dotenv
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: pymongo
+Requires-Dist: certifi
+Dynamic: author
+Dynamic: author-email
+Dynamic: requires-dist
