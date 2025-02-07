@@ -9,7 +9,6 @@ from networksecurity.pipeline.training_pipeline import TrainingPipeline
 
 def start_training():
     try:
-        pass
         #logging.info("training has started")
 
         model_training=TrainingPipeline()

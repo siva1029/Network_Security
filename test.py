@@ -1,14 +1,20 @@
+import pandas as pd
+import pymongo
 
-from pymongo.mongo_client import MongoClient
+def fetch_data_from_mongo():
+    client = pymongo.MongoClient("mongodb+srv://admin:admin@cluster0.tifrq.mongodb.net/KNAcadeny?retryWrites=true&w=majority")
+    db = client["KNAcadeny"]
+    collection = db["NetworkData"]
 
-uri = "mongodb+srv://admin:admin@cluster0.tifrq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    data = list(collection.find({}))  # Fetch all documents
+    dataframe = pd.DataFrame(data)
 
-# Create a new client and connect to the server
-client = MongoClient(uri)
+    return dataframe
 
-# Send a ping to confirm a successful connection
-try:
-    client.admin.command('ping')
-    print("Pinged your deployment. You successfully connected to MongoDB!")
-except Exception as e:
-    print(e)
+
+df = fetch_data_from_mongo()
+print(df.shape)  # Should print (22110, columns)
+print(df.head()) # Check the first few rows
+
+train_set, test_set = train_test_split(dataframe, test_size=0.2, random_state=42)
+print("DataFrame shape before splitting:", dataframe.shape)

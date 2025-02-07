@@ -1,7 +1,6 @@
 from networksecurity.exception.exception import NetworkSecurityException
 from networksecurity.logger.logger import logging
 
-
 #configuration of component and artifact generation
 from networksecurity.entity.config_entity import DataIngestionConfig
 from networksecurity.entity.artifact_entity import DataIngestionArtifact
@@ -19,7 +18,6 @@ load_dotenv()
 MONGO_DB_URL=os.getenv("MONGO_DB_URL")
 print(MONGO_DB_URL)
 
-
 class DataIngestion:
     def __init__(self,data_ingestion_config:DataIngestionConfig):
         try:
@@ -29,22 +27,45 @@ class DataIngestion:
         
     def export_collection_as_dataframe(self):
         try:
-            database_name=self.data_ingestion_config.database_name            
-            collection_name=self.data_ingestion_name.collection_name
+            database_name = self.data_ingestion_config.database_name
+            collection_name = self.data_ingestion_config.collection_name
 
-            self.mongo_client=pymongo.MongoClient(MONGO_DB_URL)
-            collection=self.mongo_client[database_name][collection_name]
+            # Verify Connection
+            print(f"Connecting to MongoDB: {MONGO_DB_URL}")
+            self.mongo_client = pymongo.MongoClient(MONGO_DB_URL)
 
-            df=pd.DataFrame(list(collection.find()))
-            #Remove id column
-            if "_id" in df.columns.to_list():
-                df = df.drop(columns=["_id"], axis=1)
+            # Verify Database
+            db_list = self.mongo_client.list_database_names()
+            if database_name not in db_list:
+                raise Exception(f"Database '{database_name}' not found in MongoDB. Available DBs: {db_list}")
+            collection = self.mongo_client[database_name][collection_name]
+        
+            # Fetch Data
+            documents = list(collection.find())
+
+            if not documents:
+                raise Exception(f"No documents found in collection '{collection_name}'.")
+            
+            df = pd.DataFrame(documents)
+
+            # Drop `_id` column if exists
+            if "_id" in df.columns:
+                df = df.drop(columns=["_id"])
 
             df.replace({"na": np.nan}, inplace=True)
-        
-        except Exception as e:
-            raise NetworkSecurityException(e,sys)
 
+            print("DataFrame shape before splitting:", df.shape)
+            print("First few rows:\n", df.head())   
+
+            return df
+        
+            
+        except Exception as e:
+            #raise NetworkSecurityException(e,sys)
+            print("Error in fetching data:", str(e))
+            return pd.DataFrame()  # Return empty DataFrame in case of failure
+
+        
     def export_data_into_feature_store(self,dataframe: pd.DataFrame):
         try:
             feature_store_file_path=self.data_ingestion_config.feature_store_file_path
@@ -56,10 +77,13 @@ class DataIngestion:
             
         except Exception as e:
             raise NetworkSecurityException(e,sys)
-
-
+        
+        
     def split_data_as_train_test(self,dataframe: pd.DataFrame):
         try:
+            print("DataFrame shape before splitting:", dataframe.shape)
+            print("First few rows:\n", dataframe.head())
+
             train_set, test_set = train_test_split(
                 dataframe, test_size=self.data_ingestion_config.train_test_split_ratio
             )
@@ -70,6 +94,7 @@ class DataIngestion:
             )
             
             dir_path = os.path.dirname(self.data_ingestion_config.training_file_path)
+            
             os.makedirs(dir_path, exist_ok=True)
             
             logging.info(f"Exporting train and test file path.")
@@ -82,6 +107,8 @@ class DataIngestion:
                 self.data_ingestion_config.testing_file_path, index=False, header=True
             )
             logging.info(f"Exported train and test file path.")
+
+            
         except Exception as e:
             raise NetworkSecurityException(e,sys)
         
@@ -94,5 +121,7 @@ class DataIngestion:
             data_ingestion_artifact = DataIngestionArtifact(trained_file_path=self.data_ingestion_config.training_file_path,
             test_file_path=self.data_ingestion_config.testing_file_path)
             return data_ingestion_artifact
+            
+            
         except Exception as e:
             raise NetworkSecurityException(e,sys)
